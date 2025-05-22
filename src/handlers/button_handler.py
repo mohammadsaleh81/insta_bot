@@ -1,5 +1,5 @@
 from telethon import events
-from telethon.tl.types import Button
+from telethon import Button
 from utils.ui_keyboard import ui_keyboard
 
 class ButtonHandler:

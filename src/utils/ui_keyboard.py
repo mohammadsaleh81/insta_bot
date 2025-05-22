@@ -1,4 +1,4 @@
-from telethon.tl.types import ReplyKeyboardMarkup, KeyboardButton, KeyboardButtonRow
+from telethon import Button
 
 class UIKeyboard:
     """Class to manage the Telegram custom reply keyboard UI"""
@@ -7,36 +7,21 @@ class UIKeyboard:
         # Main keyboard layout with icons and text
         self.main_keyboard_buttons = [
             [
-                KeyboardButton("🔍 جستجو"),
-                KeyboardButton("📅 جدول پخش سریال")
+                Button.text("🧠 تحلیل شخصیت"),
+                Button.text("📜 تاریخچه")
             ],
             [
-                KeyboardButton("🆕 جدیدترین ها"),
-                KeyboardButton("📚 پردانلودترین ها")
+                Button.text("👤 پروفایل من"),
+                Button.text("💰 خرید سکه")
             ],
             [
-                KeyboardButton("🌎 کشور ها"),
-                KeyboardButton("📂 ژانر ها"),
-                KeyboardButton("📆 سال ساخت")
-            ],
-            [
-                KeyboardButton("❓ راهنما"),
-                KeyboardButton("📞 تماس با ما"),
-                KeyboardButton("📋 لیست دانلود")
+                Button.text("❓ راهنما")
             ]
         ]
-        
-        # Create ReplyKeyboardMarkup for main menu
-        self.main_keyboard = ReplyKeyboardMarkup(
-            rows=[KeyboardButtonRow(buttons=row) for row in self.main_keyboard_buttons],
-            resize=True,
-            selective=False,
-            placeholder="یک گزینه انتخاب کنید"
-        )
     
     def get_main_keyboard(self):
         """Get the main menu keyboard"""
-        return self.main_keyboard
+        return self.main_keyboard_buttons
 
 # Create an instance to be imported elsewhere
 ui_keyboard = UIKeyboard() 

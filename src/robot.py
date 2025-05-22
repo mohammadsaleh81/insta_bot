@@ -441,7 +441,7 @@ main_menu_buttons = [
 
 # دکمه‌های منوی اصلی با کیبورد ثابت (مشابه تصویر)
 # استفاده از کیبورد تعریف شده در ui_keyboard
-main_keyboard = ui_keyboard.get_main_keyboard()
+main_keyboard_buttons = ui_keyboard.get_main_keyboard()
 
 # دکمه‌های خرید سکه
 coin_purchase_buttons = [
@@ -505,17 +505,21 @@ async def start_command(event):
         "از منوی زیر انتخاب کنید:"
     )
     
+    # Get the keyboard buttons
+    keyboard_buttons = ui_keyboard.get_main_keyboard()
+    markup = event.client.build_reply_markup(keyboard_buttons)
+    
     try:
         # ارسال تصویر و منو
         await bot.send_file(
             event.chat_id,
             welcome_photo,
             caption=welcome_message,
-            reply_markup=main_keyboard
+            buttons=markup
         )
     except Exception as e:
         # اگر ارسال تصویر با خطا مواجه شد، فقط متن و منو را ارسال کن
-        await event.respond(welcome_message, reply_markup=main_keyboard)
+        await event.respond(welcome_message, buttons=markup)
 
 # -----------------------
 # رویداد راهنما
@@ -554,9 +558,13 @@ async def cancel_command(event):
     if user_id in user_profile_info:
         del user_profile_info[user_id]
     
+    # Get the keyboard buttons
+    keyboard_buttons = ui_keyboard.get_main_keyboard()
+    markup = event.client.build_reply_markup(keyboard_buttons)
+    
     await event.respond(
         "عملیات لغو شد. به منوی اصلی بازگشتید.",
-        reply_markup=main_keyboard
+        buttons=markup
     )
 
 # -----------------------
@@ -982,58 +990,109 @@ async def ui_message_processor(update):
     # دریافت وضعیت فعلی کاربر
     user_state = user_manager.get_user_state(user_id)
         
-    if received == "🔍 جستجو":
-        user_manager.set_user_state(user_id, States.SEARCHING)
+    if received == "🧠 تحلیل شخصیت":
+        # تنظیم وضعیت کاربر به حالت دریافت نام کاربری
+        user_manager.set_user_state(user_id, States.TYPING_USERNAME)
+        
+        # پاک کردن اطلاعات قبلی اگر وجود داشته باشد
+        user_manager.clear_profile_info(user_id)
+            
         await update.respond(
-            "لطفاً عبارت مورد نظر برای جستجو را وارد کنید:",
+            "👤 لطفاً نام کاربری اینستاگرام مورد نظر را وارد کنید:\n\n"
+            "مثال: @username یا username\n\n"
+            "⚠️ توجه: حساب کاربری باید عمومی (public) باشد.",
             buttons=back_to_main_button
         )
-    elif received == "📅 جدول پخش سریال":
-        await update.respond(
-            "جدول پخش سریال‌های در حال پخش:",
-            buttons=back_to_main_button
+    elif received == "📜 تاریخچه":
+        # دریافت تاریخچه تحلیل‌های کاربر
+        history_items = await user_manager.get_user_history(user_id)
+        
+        if not history_items:
+            await update.respond(
+                "📌 شما هنوز هیچ تحلیلی انجام نداده‌اید.\n\n"
+                "برای شروع، از گزینه 'تحلیل شخصیت' استفاده کنید.",
+                buttons=back_to_main_button
+            )
+            return
+            
+        history_text = "📜 تاریخچه تحلیل‌های شما:\n\nبر روی هر مورد کلیک کنید تا تحلیل کامل را مشاهده کنید:\n\n"
+        
+        # ساخت دکمه برای هر مورد تاریخچه
+        buttons = []
+        for i, item in enumerate(history_items):
+            display_text = f"📊 {item['username']} - {item['timestamp']}"
+            # ساخت یک کلید منحصر به فرد برای هر تحلیل
+            history_key = f"history_{user_id}_{item['username']}_{item['timestamp'].replace(' ', '_').replace(':', '-')}"
+            buttons.append([Button.inline(display_text, history_key.encode())])
+        
+        # اضافه کردن دکمه بازگشت به منوی اصلی
+        buttons.append(back_to_main_button)
+        
+        await update.respond(history_text, buttons=buttons)
+    elif received == "👤 پروفایل من":
+        # دریافت اطلاعات کاربر
+        current_coins = await user_manager.get_user_coins(user_id)
+        user_info = await user_manager.get_user_info(user_id)
+        
+        if not user_info:
+            user_info = {
+                "first_name": update.sender.first_name if hasattr(update.sender, "first_name") else "",
+                "analysis_count": 0,
+                "join_date": datetime.now().strftime("%Y-%m-%d"),
+                "last_activity": datetime.now().strftime("%Y-%m-%d %H:%M")
+            }
+        
+        profile_text = (
+            f"👤 **پروفایل کاربری**\n\n"
+            f"🆔 شناسه: `{user_id}`\n"
+            f"👤 نام: {user_info['first_name']}\n"
+            f"💰 سکه‌های شما: {current_coins}\n\n"
+            f"📊 **آمار استفاده**\n"
+            f"📈 تعداد تحلیل‌ها: {user_info['analysis_count']}\n"
+            f"📅 تاریخ عضویت: {user_info['join_date']}\n"
+            f"⏱ آخرین فعالیت: {user_info['last_activity']}\n\n"
+            "برای خرید سکه، روی دکمه 'خرید سکه' کلیک کنید."
         )
-    elif received == "🆕 جدیدترین ها":
-        await update.respond(
-            "جدیدترین محتوای اضافه شده:",
-            buttons=back_to_main_button
+        
+        profile_buttons = [
+            [Button.inline("💰 خرید سکه", b"buy_coins")],
+            back_to_main_button
+        ]
+        
+        await update.respond(profile_text, buttons=profile_buttons)
+    elif received == "💰 خرید سکه":
+        coins_text = (
+            "💎 **خرید سکه**\n\n"
+            "لطفاً یکی از بسته‌های زیر را انتخاب کنید:\n\n"
+            "پس از پرداخت و تایید ادمین، سکه‌ها به حساب شما اضافه خواهند شد."
         )
-    elif received == "📚 پردانلودترین ها":
-        await update.respond(
-            "محبوب‌ترین و پردانلودترین محتوا:",
-            buttons=back_to_main_button
-        )
-    elif received == "🌎 کشور ها":
-        await update.respond(
-            "انتخاب محتوا بر اساس کشور سازنده:",
-            buttons=back_to_main_button
-        )
-    elif received == "📂 ژانر ها":
-        await update.respond(
-            "انتخاب محتوا بر اساس ژانر:",
-            buttons=back_to_main_button
-        )
-    elif received == "📆 سال ساخت":
-        await update.respond(
-            "انتخاب محتوا بر اساس سال ساخت:",
-            buttons=back_to_main_button
-        )
+        
+        await update.respond(coins_text, buttons=coin_purchase_buttons)
     elif received == "❓ راهنما":
-        await help_command(update)
-    elif received == "📞 تماس با ما":
-        await update.respond(
-            "اطلاعات تماس با ما:\n@AdminContactUsername",
-            buttons=back_to_main_button
+        help_text = (
+            "❓ **راهنمای ربات**\n\n"
+            "🤖 **قابلیت‌های ربات:**\n"
+            "• تحلیل شخصیت از روی پروفایل اینستاگرام\n"
+            "• تحلیل رفتار و علایق از محتوای پست‌ها\n"
+            "• ارائه گزارش جامع روانشناسی\n\n"
+            "💰 **سیستم سکه:**\n"
+            f"• هر تحلیل: {ANALYSIS_COST} سکه\n"
+            f"• هر پیام چت: {CHAT_COST} سکه\n"
+            "• امکان خرید سکه از منوی پروفایل\n\n"
+            "⚠️ **نکات مهم:**\n"
+            "• پروفایل اینستاگرام باید عمومی باشد\n"
+            "• اطلاعات وارد شده باید دقیق باشد\n"
+            "• تحلیل‌ها در تاریخچه ذخیره می‌شوند\n\n"
+            "🆘 **پشتیبانی:**\n"
+            "برای ارتباط با پشتیبانی: @InstaAnalysAiSupport"
         )
-    elif received == "📋 لیست دانلود":
-        await update.respond(
-            "لیست دانلود شما خالی است.",
-            buttons=back_to_main_button
-        )
-
-# Register message handler for UI messages
-ui_message_handler = events.NewMessage(func=ui_filter)
-bot.add_event_handler(ui_message_processor, ui_message_handler)
+        
+        help_buttons = [
+            [Button.inline("📝 شروع تحلیل", b"start_analysis")],
+            back_to_main_button
+        ]
+        
+        await update.respond(help_text, buttons=help_buttons)
 
 # -----------------------
 # رویداد پیام‌های متنی (غیر از دستورات و منوها)
@@ -1288,7 +1347,7 @@ if __name__ == "__main__":
         # Register all event handlers
         logger.info("در حال ثبت هندلرهای رویدادها...")
         
-        # Explicitly register UI filter for keyboard messages
+        # Register message handler for UI messages
         ui_message_handler = events.NewMessage(func=ui_filter)
         bot.add_event_handler(ui_message_processor, ui_message_handler)
         
