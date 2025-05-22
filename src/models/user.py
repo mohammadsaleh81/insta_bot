@@ -30,13 +30,48 @@ class States:
     SEARCHING = 12
 
 class User:
-    def __init__(self, user_id: str, first_name: str):
+    """User model class for storing user information"""
+    
+    def __init__(self, user_id, first_name, last_name=None, username=None, lang_code=None):
         self.user_id = user_id
         self.first_name = first_name
-        self.state = States.MAIN_MENU
-        self.profile_info: Optional[UserProfile] = None
-        self.chat_history: List[Dict] = []
-        self.current_analysis: Optional[Dict] = None
+        self.last_name = last_name
+        self.username = username
+        self.lang_code = lang_code
+        self.coins = 0
+        self.profile_info = {}
+        
+    def get_full_name(self):
+        """Get user's full name"""
+        if self.last_name:
+            return f"{self.first_name} {self.last_name}"
+        return self.first_name
+        
+    def update_coins(self, amount):
+        """Update user's coin balance"""
+        self.coins = amount
+        
+    def add_coins(self, amount):
+        """Add coins to user's balance"""
+        self.coins += amount
+        
+    def deduct_coins(self, amount):
+        """Deduct coins from user's balance"""
+        if self.coins >= amount:
+            self.coins -= amount
+            return True
+        return False
+        
+    def to_dict(self):
+        """Convert user to dictionary for database storage"""
+        return {
+            "user_id": self.user_id,
+            "first_name": self.first_name,
+            "last_name": self.last_name,
+            "username": self.username,
+            "lang_code": self.lang_code,
+            "coins": self.coins
+        }
 
     def set_state(self, state: int) -> None:
         """Set user's current state"""

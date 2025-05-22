@@ -1,5 +1,6 @@
 from telethon import TelegramClient, events, Button
 from telethon.tl.types import User as TelegramUser
+from telethon.tl.types import ReplyKeyboardMarkup, KeyboardButton, KeyboardButtonRow
 import logging
 import json
 import traceback
@@ -11,6 +12,10 @@ from openai import OpenAI
 from pymongo import MongoClient
 from bson import ObjectId
 from dotenv import load_dotenv
+from utils.ui_filter import ui_filter
+from utils.ui_keyboard import ui_keyboard
+from utils.user_manager import UserManager
+from models.user import States
 # 2025-05-21 20:59:40,714 - __main__ - INFO - ربات شروع به کار کرد.
 # بارگیری متغیرهای محیطی
 load_dotenv()
@@ -60,6 +65,9 @@ try:
     users_collection.create_index([("user_id", 1)], unique=True)
     analysis_collection.create_index([("user_id", 1)])
     analysis_collection.create_index([("created_at", -1)])
+    
+    # Initialize UserManager
+    user_manager = UserManager(mongo_client, DB_NAME)
     
 except Exception as e:
     logger.error(f"خطا در اتصال به MongoDB: {str(e)}")
@@ -431,6 +439,10 @@ main_menu_buttons = [
     [Button.inline("❓ راهنما", b"view_help")]
 ]
 
+# دکمه‌های منوی اصلی با کیبورد ثابت (مشابه تصویر)
+# استفاده از کیبورد تعریف شده در ui_keyboard
+main_keyboard = ui_keyboard.get_main_keyboard()
+
 # دکمه‌های خرید سکه
 coin_purchase_buttons = [
     [Button.inline("💎 ۵۰ سکه - ۵۰,۰۰۰ تومان", b"buy_50_coins")],
@@ -455,7 +467,7 @@ async def start_command(event):
     user_id = str(sender.id)
     
     # تنظیم وضعیت کاربر به منوی اصلی
-    user_states[user_id] = States.MAIN_MENU
+    user_manager.set_user_state(user_id, States.MAIN_MENU)
     
     # بررسی اگر کاربر جدید است
     user_doc = users_collection.find_one({"user_id": user_id})
@@ -463,10 +475,10 @@ async def start_command(event):
     
     if is_new_user:
         # اضافه کردن سکه‌های رایگان اولیه برای کاربران جدید
-        await update_user_coins(user_id, DEFAULT_COINS)
+        await user_manager.update_user_coins(user_id, DEFAULT_COINS)
     
     # ذخیره اطلاعات کاربر در پایگاه داده
-    await save_user_to_db(
+    await user_manager.save_user(
         user_id, 
         sender.first_name, 
         sender.last_name if hasattr(sender, 'last_name') else None,
@@ -475,7 +487,7 @@ async def start_command(event):
     )
     
     # دریافت تعداد سکه‌های فعلی
-    current_coins = await get_user_coins(user_id)
+    current_coins = await user_manager.get_user_coins(user_id)
     
     # ارسال تصویر خوش‌آمدگویی
     welcome_photo = "welcome_banner.jpg"  # مسیر تصویر خوش‌آمدگویی
@@ -499,11 +511,11 @@ async def start_command(event):
             event.chat_id,
             welcome_photo,
             caption=welcome_message,
-            buttons=main_menu_buttons
+            reply_markup=main_keyboard
         )
     except Exception as e:
         # اگر ارسال تصویر با خطا مواجه شد، فقط متن و منو را ارسال کن
-        await event.respond(welcome_message, buttons=main_menu_buttons)
+        await event.respond(welcome_message, reply_markup=main_keyboard)
 
 # -----------------------
 # رویداد راهنما
@@ -536,7 +548,7 @@ async def cancel_command(event):
     user_id = str(sender.id)
     
     # تنظیم وضعیت کاربر به منوی اصلی
-    user_states[user_id] = States.MAIN_MENU
+    user_manager.set_user_state(user_id, States.MAIN_MENU)
     
     # پاک کردن اطلاعات کاربر اگر وجود داشت
     if user_id in user_profile_info:
@@ -544,7 +556,7 @@ async def cancel_command(event):
     
     await event.respond(
         "عملیات لغو شد. به منوی اصلی بازگشتید.",
-        buttons=main_menu_buttons
+        reply_markup=main_keyboard
     )
 
 # -----------------------
@@ -556,15 +568,12 @@ async def button_callback(event):
     user_id = str(sender.id)
     data = event.data.decode('utf-8')
     
-    # اگر کاربر در دیکشنری وضعیت‌ها نیست، او را به منوی اصلی هدایت کنید
-    if user_id not in user_states:
-        user_states[user_id] = States.MAIN_MENU
-    
-    state = user_states[user_id]
+    # دریافت وضعیت فعلی کاربر
+    state = user_manager.get_user_state(user_id)
     
     if data == "back_to_main":
-        user_states[user_id] = States.MAIN_MENU
-        current_coins = await get_user_coins(user_id)
+        user_manager.set_user_state(user_id, States.MAIN_MENU)
+        current_coins = await user_manager.get_user_coins(user_id)
         await event.edit(
             f"به منوی اصلی بازگشتید.\n💰 سکه‌های شما: {current_coins}\n\n"
             "لطفاً یکی از گزینه‌های زیر را انتخاب کنید:",
@@ -573,11 +582,10 @@ async def button_callback(event):
     
     elif data == "start_analysis":
         # تنظیم وضعیت کاربر به حالت دریافت نام کاربری
-        user_states[user_id] = States.TYPING_USERNAME
+        user_manager.set_user_state(user_id, States.TYPING_USERNAME)
         
         # پاک کردن اطلاعات قبلی اگر وجود داشته باشد
-        if user_id in user_profile_info:
-            user_profile_info[user_id] = {}
+        user_manager.clear_profile_info(user_id)
             
         await event.edit(
             "👤 لطفاً نام کاربری اینستاگرام مورد نظر را وارد کنید:\n\n"
@@ -586,20 +594,158 @@ async def button_callback(event):
             buttons=back_to_main_button
         )
     
-    elif data == "view_history":
-        if user_id not in user_history or not user_history[user_id]:
-            # تلاش برای بارگیری تاریخچه از پایگاه داده
-            history_items = await load_user_history(user_id)
+    elif data == "confirm_analysis":
+        # بررسی اعتبار سکه‌ها
+        current_coins = await user_manager.get_user_coins(user_id)
+        
+        if current_coins < ANALYSIS_COST:
+            await event.edit(
+                f"❌ سکه‌های شما کافی نیست!\n\n"
+                f"💰 سکه‌های فعلی: {current_coins}\n"
+                f"💎 سکه‌های مورد نیاز: {ANALYSIS_COST}\n\n"
+                "لطفاً ابتدا سکه خریداری کنید.",
+                buttons=[
+                    [Button.inline("💰 خرید سکه", b"buy_coins")],
+                    back_to_main_button
+                ]
+            )
+            return
+        
+        # کم کردن سکه‌ها
+        success, new_coins = await user_manager.deduct_coins(user_id, ANALYSIS_COST)
+        
+        if not success:
+            await event.edit(
+                "❌ خطا در کسر سکه‌ها. لطفاً مجدداً تلاش کنید.",
+                buttons=back_to_main_button
+            )
+            return
+        
+        # دریافت اطلاعات پروفایل
+        profile_info = user_manager.get_profile_info(user_id)
+        username = profile_info.get("username", "")
+        
+        # اطلاع‌رسانی به کاربر
+        await event.edit(
+            f"⏳ در حال تحلیل پروفایل {username}...\n\n"
+            f"💰 {ANALYSIS_COST} سکه از حساب شما کسر شد. سکه‌های باقیمانده: {new_coins}\n\n"
+            "لطفاً کمی صبر کنید. این فرایند ممکن است تا ۲ دقیقه طول بکشد."
+        )
+        
+        try:
+            # ساخت ورودی برای تحلیل
+            gpt_input = await build_gpt_input(username, profile_info)
             
-            if not history_items:
-                await event.edit(
-                    "📌 شما هنوز هیچ تحلیلی انجام نداده‌اید.\n\n"
-                    "برای شروع، از گزینه 'تحلیل شخصیت' استفاده کنید.",
-                    buttons=back_to_main_button
-                )
-                return
-        else:
-            history_items = user_history[user_id]
+            # دریافت تحلیل
+            analysis = get_personality_analysis(gpt_input)
+            
+            # ذخیره تحلیل در تاریخچه
+            await user_manager.save_analysis(user_id, username, analysis)
+            
+            # ارسال نتیجه تحلیل به صورت چند پیام (به دلیل محدودیت طول پیام تلگرام)
+            await event.respond(f"📊 تحلیل شخصیت برای {username}:")
+            
+            max_length = 4000
+            sections = analysis.split('\n\n')
+            current_message = ""
+            
+            for section in sections:
+                if len(current_message) + len(section) + 2 <= max_length:
+                    current_message += section + "\n\n"
+                else:
+                    await event.respond(current_message)
+                    current_message = section + "\n\n"
+            
+            if current_message:
+                await event.respond(current_message)
+            
+            # ارسال دکمه‌های پایانی
+            final_buttons = [
+                [Button.inline("🔄 تحلیل پروفایل دیگر", b"start_analysis")],
+                [Button.inline("📜 مشاهده تاریخچه", b"view_history")],
+                back_to_main_button
+            ]
+            
+            await event.respond(
+                "✅ تحلیل با موفقیت انجام شد!\n\n"
+                f"💰 سکه‌های باقیمانده: {new_coins}",
+                buttons=final_buttons
+            )
+            
+        except Exception as e:
+            logger.error(f"خطا در تحلیل پروفایل: {str(e)}")
+            
+            # بازگرداندن سکه‌ها در صورت خطا
+            await user_manager.add_coins(user_id, ANALYSIS_COST)
+            
+            await event.respond(
+                f"❌ خطا در تحلیل پروفایل:\n{str(e)}\n\n"
+                "سکه‌های شما بازگردانده شد. لطفاً مجدداً تلاش کنید.",
+                buttons=back_to_main_button
+            )
+    
+    elif data == "edit_profile_info":
+        # نمایش منوی ویرایش اطلاعات
+        edit_buttons = [
+            [Button.inline("👤 ویرایش نام کاربری", b"edit_username")],
+            [Button.inline("📋 ویرایش نام", b"edit_name")],
+            [Button.inline("🎂 ویرایش سال تولد", b"edit_birth_year")],
+            [Button.inline("👫 ویرایش جنسیت", b"edit_gender")],
+            [Button.inline("🏙 ویرایش شهر", b"edit_city")],
+            [Button.inline("💼 ویرایش شغل", b"edit_job")],
+            [Button.inline("🔍 ویرایش هدف تحلیل", b"edit_relationship")],
+            back_to_main_button
+        ]
+        
+        await event.edit(
+            "✏️ لطفاً اطلاعاتی که می‌خواهید ویرایش کنید را انتخاب کنید:",
+            buttons=edit_buttons
+        )
+    
+    elif data.startswith("edit_"):
+        # پردازش درخواست‌های ویرایش اطلاعات
+        field = data.replace("edit_", "")
+        
+        field_names = {
+            "username": "نام کاربری",
+            "name": "نام",
+            "birth_year": "سال تولد",
+            "gender": "جنسیت",
+            "city": "شهر",
+            "job": "شغل",
+            "relationship": "هدف تحلیل"
+        }
+        
+        field_states = {
+            "username": States.TYPING_USERNAME,
+            "name": States.TYPING_NAME,
+            "birth_year": States.TYPING_BIRTH_YEAR,
+            "gender": States.TYPING_GENDER,
+            "city": States.TYPING_CITY,
+            "job": States.TYPING_JOB,
+            "relationship": States.TYPING_RELATIONSHIP
+        }
+        
+        if field in field_states:
+            # تنظیم وضعیت کاربر به حالت ویرایش فیلد مورد نظر
+            user_manager.set_user_state(user_id, field_states[field])
+            
+            await event.edit(
+                f"✏️ لطفاً {field_names.get(field, field)} جدید را وارد کنید:",
+                buttons=back_to_main_button
+            )
+    
+    elif data == "view_history":
+        # دریافت تاریخچه تحلیل‌های کاربر
+        history_items = await user_manager.get_user_history(user_id)
+        
+        if not history_items:
+            await event.edit(
+                "📌 شما هنوز هیچ تحلیلی انجام نداده‌اید.\n\n"
+                "برای شروع، از گزینه 'تحلیل شخصیت' استفاده کنید.",
+                buttons=back_to_main_button
+            )
+            return
             
         history_text = "📜 تاریخچه تحلیل‌های شما:\n\nبر روی هر مورد کلیک کنید تا تحلیل کامل را مشاهده کنید:\n\n"
         
@@ -618,8 +764,16 @@ async def button_callback(event):
     
     elif data == "view_profile":
         # دریافت اطلاعات کاربر
-        current_coins = await get_user_coins(user_id)
-        user_info = await get_user_info(user_id)
+        current_coins = await user_manager.get_user_coins(user_id)
+        user_info = await user_manager.get_user_info(user_id)
+        
+        if not user_info:
+            user_info = {
+                "first_name": sender.first_name,
+                "analysis_count": 0,
+                "join_date": datetime.now().strftime("%Y-%m-%d"),
+                "last_activity": datetime.now().strftime("%Y-%m-%d %H:%M")
+            }
         
         profile_text = (
             f"👤 **پروفایل کاربری**\n\n"
@@ -649,7 +803,7 @@ async def button_callback(event):
         
         await event.edit(coins_text, buttons=coin_purchase_buttons)
     
-    elif data.startswith("buy_"):
+    elif data.startswith("buy_") and "_coins" not in data:
         amount = int(data.split("_")[1])
         price = {
             50: "50,000",
@@ -819,356 +973,348 @@ async def show_analysis_from_history(event, user_id, username, timestamp):
         )
 
 # -----------------------
-# رویداد پیام‌های متنی
-@bot.on(events.NewMessage(func=lambda e: e.text and not e.text.startswith('/')))
+# پردازش پیام‌های مربوط به منوی اصلی
+async def ui_message_processor(update):
+    """پردازش پیام‌های منوی UI"""
+    received = update.message.text
+    user_id = str(update.sender_id)
+
+    # دریافت وضعیت فعلی کاربر
+    user_state = user_manager.get_user_state(user_id)
+        
+    if received == "🔍 جستجو":
+        user_manager.set_user_state(user_id, States.SEARCHING)
+        await update.respond(
+            "لطفاً عبارت مورد نظر برای جستجو را وارد کنید:",
+            buttons=back_to_main_button
+        )
+    elif received == "📅 جدول پخش سریال":
+        await update.respond(
+            "جدول پخش سریال‌های در حال پخش:",
+            buttons=back_to_main_button
+        )
+    elif received == "🆕 جدیدترین ها":
+        await update.respond(
+            "جدیدترین محتوای اضافه شده:",
+            buttons=back_to_main_button
+        )
+    elif received == "📚 پردانلودترین ها":
+        await update.respond(
+            "محبوب‌ترین و پردانلودترین محتوا:",
+            buttons=back_to_main_button
+        )
+    elif received == "🌎 کشور ها":
+        await update.respond(
+            "انتخاب محتوا بر اساس کشور سازنده:",
+            buttons=back_to_main_button
+        )
+    elif received == "📂 ژانر ها":
+        await update.respond(
+            "انتخاب محتوا بر اساس ژانر:",
+            buttons=back_to_main_button
+        )
+    elif received == "📆 سال ساخت":
+        await update.respond(
+            "انتخاب محتوا بر اساس سال ساخت:",
+            buttons=back_to_main_button
+        )
+    elif received == "❓ راهنما":
+        await help_command(update)
+    elif received == "📞 تماس با ما":
+        await update.respond(
+            "اطلاعات تماس با ما:\n@AdminContactUsername",
+            buttons=back_to_main_button
+        )
+    elif received == "📋 لیست دانلود":
+        await update.respond(
+            "لیست دانلود شما خالی است.",
+            buttons=back_to_main_button
+        )
+
+# Register message handler for UI messages
+ui_message_handler = events.NewMessage(func=ui_filter)
+bot.add_event_handler(ui_message_processor, ui_message_handler)
+
+# -----------------------
+# رویداد پیام‌های متنی (غیر از دستورات و منوها)
+@bot.on(events.NewMessage(func=lambda e: e.text and not e.text.startswith('/') and not ui_filter(e)))
 async def text_message_handler(event):
-    """پردازش پیام‌های متنی"""
-    user_id = str(event.sender_id)
+    """پردازش پیام‌های متنی بر اساس وضعیت کاربر"""
+    sender = await event.get_sender()
+    user_id = str(sender.id)
     text = event.text.strip()
     
-    # اگر کاربر در دیکشنری وضعیت‌ها نیست، او را به منوی اصلی هدایت کنید
-    if user_id not in user_states:
-        user_states[user_id] = States.MAIN_MENU
-        await event.respond(
-            "لطفاً از منوی اصلی شروع کنید:",
-            buttons=main_menu_buttons
-        )
-        return
+    # دریافت وضعیت فعلی کاربر
+    state = user_manager.get_user_state(user_id)
     
-    state = user_states[user_id]
-    
-    # اگر کاربر در دیکشنری اطلاعات پروفایل نیست، یک پروفایل جدید ایجاد کنید
-    if user_id not in user_profile_info:
-        user_profile_info[user_id] = {}
-    
+    # پردازش بر اساس وضعیت کاربر
     if state == States.TYPING_USERNAME:
-        # حذف @ از ابتدای نام کاربری اگر وجود داشته باشد
-        username = text.lstrip('@')
-        user_profile_info[user_id]['username'] = username
-        user_states[user_id] = States.TYPING_NAME
+        # دریافت نام کاربری اینستاگرام
+        username = text.replace("@", "").strip()
+        
+        if not username:
+            await event.respond(
+                "❌ نام کاربری وارد شده معتبر نیست. لطفاً مجدداً تلاش کنید:",
+                buttons=back_to_main_button
+            )
+            return
+        
+        # ذخیره نام کاربری در اطلاعات پروفایل
+        user_manager.set_profile_info(user_id, "username", username)
+        
+        # تغییر وضعیت به مرحله بعدی
+        user_manager.set_user_state(user_id, States.TYPING_NAME)
+        
         await event.respond(
-            f"نام کاربری ثبت شد: {username}\n\n"
-            "لطفاً نام و نام خانوادگی را وارد کنید:"
+            f"✅ نام کاربری «{username}» ثبت شد.\n\n"
+            "لطفاً نام کامل شخص مورد نظر را وارد کنید:",
+            buttons=back_to_main_button
         )
     
     elif state == States.TYPING_NAME:
-        user_profile_info[user_id]['name'] = text
-        user_states[user_id] = States.TYPING_BIRTH_YEAR
+        # دریافت نام کامل
+        name = text.strip()
+        
+        if not name:
+            await event.respond(
+                "❌ نام وارد شده معتبر نیست. لطفاً مجدداً تلاش کنید:",
+                buttons=back_to_main_button
+            )
+            return
+        
+        # ذخیره نام در اطلاعات پروفایل
+        user_manager.set_profile_info(user_id, "name", name)
+        
+        # تغییر وضعیت به مرحله بعدی
+        user_manager.set_user_state(user_id, States.TYPING_BIRTH_YEAR)
+        
         await event.respond(
-            f"نام ثبت شد: {text}\n\n"
-            "لطفاً سال تولد را به صورت شمسی وارد کنید (مثال: 1370):"
+            f"✅ نام «{name}» ثبت شد.\n\n"
+            "لطفاً سال تولد شخص مورد نظر را به صورت عدد شمسی وارد کنید (مثلاً ۱۳۷۵):",
+            buttons=back_to_main_button
         )
     
     elif state == States.TYPING_BIRTH_YEAR:
+        # دریافت سال تولد
         try:
-            birth_year = int(text)
-            user_profile_info[user_id]['birth_year'] = birth_year
+            birth_year = int(text.strip())
             
-            # محاسبه سن بر اساس سال شمسی
+            # اعتبارسنجی ساده برای سال تولد
+            if birth_year < 1300 or birth_year > 1410:
+                raise ValueError("Invalid birth year")
+            
+            # محاسبه سن
             age = calculate_shamsi_age(birth_year)
-            user_profile_info[user_id]['age_estimate'] = age
             
-            user_states[user_id] = States.TYPING_GENDER
+            # ذخیره سال تولد و سن در اطلاعات پروفایل
+            user_manager.set_profile_info(user_id, "birth_year", birth_year)
+            user_manager.set_profile_info(user_id, "age_estimate", age)
+            
+            # تغییر وضعیت به مرحله بعدی
+            user_manager.set_user_state(user_id, States.TYPING_GENDER)
+            
             await event.respond(
-                f"سال تولد ثبت شد: {birth_year}\n"
-                f"سن شما در سال 1404: {age} سال\n\n"
-                "لطفاً جنسیت را وارد کنید:"
+                f"✅ سال تولد «{birth_year}» (سن تقریبی: {age} سال) ثبت شد.\n\n"
+                "لطفاً جنسیت شخص مورد نظر را مشخص کنید (مرد/زن):",
+                buttons=back_to_main_button
             )
-        except ValueError:
-            await event.respond("لطفاً یک عدد معتبر وارد کنید:")
+        except:
+            await event.respond(
+                "❌ سال تولد وارد شده معتبر نیست. لطفاً یک عدد شمسی معتبر (مثلاً ۱۳۷۵) وارد کنید:",
+                buttons=back_to_main_button
+            )
     
     elif state == States.TYPING_GENDER:
-        user_profile_info[user_id]['gender'] = text
-        user_states[user_id] = States.TYPING_CITY
+        # دریافت جنسیت
+        gender = text.strip().lower()
+        
+        if gender not in ["مرد", "زن", "مذکر", "مونث", "آقا", "خانم"]:
+            await event.respond(
+                "❌ جنسیت وارد شده معتبر نیست. لطفاً «مرد» یا «زن» را وارد کنید:",
+                buttons=back_to_main_button
+            )
+            return
+        
+        # تبدیل به فرمت استاندارد
+        if gender in ["مرد", "مذکر", "آقا"]:
+            standardized_gender = "مرد"
+        else:
+            standardized_gender = "زن"
+        
+        # ذخیره جنسیت در اطلاعات پروفایل
+        user_manager.set_profile_info(user_id, "gender", standardized_gender)
+        
+        # تغییر وضعیت به مرحله بعدی
+        user_manager.set_user_state(user_id, States.TYPING_CITY)
+        
         await event.respond(
-            f"جنسیت ثبت شد: {text}\n\n"
-            "لطفاً شهر محل سکونت را وارد کنید:"
+            f"✅ جنسیت «{standardized_gender}» ثبت شد.\n\n"
+            "لطفاً شهر محل سکونت شخص مورد نظر را وارد کنید:",
+            buttons=back_to_main_button
         )
     
     elif state == States.TYPING_CITY:
-        user_profile_info[user_id]['city'] = text
-        user_states[user_id] = States.TYPING_JOB
+        # دریافت شهر
+        city = text.strip()
+        
+        if not city:
+            await event.respond(
+                "❌ شهر وارد شده معتبر نیست. لطفاً مجدداً تلاش کنید:",
+                buttons=back_to_main_button
+            )
+            return
+        
+        # ذخیره شهر در اطلاعات پروفایل
+        user_manager.set_profile_info(user_id, "city", city)
+        
+        # تغییر وضعیت به مرحله بعدی
+        user_manager.set_user_state(user_id, States.TYPING_JOB)
+        
         await event.respond(
-            f"شهر ثبت شد: {text}\n\n"
-            "لطفاً شغل را وارد کنید:"
+            f"✅ شهر «{city}» ثبت شد.\n\n"
+            "لطفاً شغل یا حوزه فعالیت شخص مورد نظر را وارد کنید:",
+            buttons=back_to_main_button
         )
     
     elif state == States.TYPING_JOB:
-        user_profile_info[user_id]['job'] = text
-        user_states[user_id] = States.TYPING_EVENT
+        # دریافت شغل
+        job = text.strip()
+        
+        if not job:
+            await event.respond(
+                "❌ شغل وارد شده معتبر نیست. لطفاً مجدداً تلاش کنید:",
+                buttons=back_to_main_button
+            )
+            return
+        
+        # ذخیره شغل در اطلاعات پروفایل
+        user_manager.set_profile_info(user_id, "job", job)
+        
+        # تغییر وضعیت به مرحله بعدی
+        user_manager.set_user_state(user_id, States.TYPING_EVENT)
+        
         await event.respond(
-            f"شغل ثبت شد: {text}\n\n"
-            "لطفاً یک رویداد قابل توجه وارد کنید (مثال: جدایی، ازدواج، تغییر شغل):"
+            f"✅ شغل «{job}» ثبت شد.\n\n"
+            "لطفاً یک رویداد مهم یا نقطه عطف در زندگی شخص مورد نظر را وارد کنید (یا 'ندارم' بنویسید):",
+            buttons=back_to_main_button
         )
     
     elif state == States.TYPING_EVENT:
-        user_profile_info[user_id]['notable_event'] = text
-        user_states[user_id] = States.MAIN_MENU
+        # دریافت رویداد مهم
+        event_info = text.strip()
         
-        # شروع فرایند تحلیل
-        await start_analysis_process(event, user_id)
-    
-    elif state == States.CHATTING_WITH_AI:
-        # بررسی موجودی سکه برای چت
-        success, current_coins = await deduct_coins(user_id, CHAT_COST)
-        if not success:
-            await event.respond(
-                f"⚠️ سکه‌های شما کافی نیست. موجودی فعلی: {current_coins} سکه\n"
-                f"هر پیام چت {CHAT_COST} سکه هزینه دارد.\n"
-                "لطفاً از بخش پروفایل کاربری، حساب خود را شارژ کنید.",
-                buttons=main_menu_buttons
-            )
-            return
+        if not event_info:
+            event_info = "اطلاعاتی در دسترس نیست"
+        elif event_info.lower() == "ندارم":
+            event_info = "اطلاعاتی در دسترس نیست"
         
-        try:
-            # دریافت پاسخ از هوش مصنوعی
-            response = await chat_with_ai(user_id, text)
-            await event.respond(response)
-        except Exception as e:
-            logger.error(f"خطا در چت با هوش مصنوعی: {str(e)}")
-            # برگرداندن سکه در صورت خطا
-            await add_coins(user_id, CHAT_COST)
-            await event.respond(
-                "❌ متأسفانه در پردازش پیام خطایی رخ داد. لطفاً دوباره تلاش کنید.\n"
-                "💰 سکه‌های شما برگردانده شد."
-            )
-
-# -----------------------
-# فرایند تحلیل شخصیت
-async def start_analysis_process(event, user_id):
-    """شروع فرایند تحلیل شخصیت"""
-    try:
-        # بررسی موجودی سکه
-        success, current_coins = await deduct_coins(user_id, ANALYSIS_COST)
-        if not success:
-            await event.respond(
-                f"⚠️ سکه‌های شما کافی نیست. موجودی فعلی: {current_coins} سکه\n"
-                f"هر تحلیل {ANALYSIS_COST} سکه هزینه دارد.\n"
-                "لطفاً از بخش پروفایل کاربری، حساب خود را شارژ کنید.",
-                buttons=main_menu_buttons
-            )
-            return
-            
-        profile_info = user_profile_info[user_id]
-        if not profile_info:
-            logger.error(f"خطا: اطلاعات پروفایل برای کاربر {user_id} یافت نشد")
-            raise Exception("اطلاعات پروفایل یافت نشد")
-            
-        username = profile_info.get('username')
-        if not username:
-            logger.error(f"خطا: نام کاربری برای کاربر {user_id} یافت نشد")
-            raise Exception("نام کاربری یافت نشد")
-            
-        logger.info(f"شروع تحلیل برای کاربر {username}")
+        # ذخیره رویداد در اطلاعات پروفایل
+        user_manager.set_profile_info(user_id, "notable_event", event_info)
         
-        extra_info = {
-            "name": profile_info.get('name', ''),
-            "birth_year": profile_info.get('birth_year', 0),
-            "age_estimate": profile_info.get('age_estimate', 0),
-            "gender": profile_info.get('gender', ''),
-            "city": profile_info.get('city', ''),
-            "job": profile_info.get('job', ''),
-            "notable_event": profile_info.get('notable_event', ''),
-            "relationship": profile_info.get('relationship', '')
-        }
-        
-        # ارسال پیام درحال پردازش
-        processing_message = await event.respond("🔄 در حال دریافت اطلاعات از اینستاگرام...")
-        
-        try:
-            logger.info("شروع ساخت داده‌های ورودی")
-            data_json = build_gpt_input(username, extra_info)
-            
-            if not data_json:
-                raise Exception("خطا در دریافت اطلاعات از اینستاگرام. لطفاً مطمئن شوید که:\n"
-                              "1. نام کاربری را درست وارد کرده‌اید\n"
-                              "2. حساب کاربری مورد نظر عمومی است\n"
-                              "3. حساب کاربری مورد نظر وجود دارد")
-            
-            logger.info("داده‌های ورودی با موفقیت ساخته شد")
-            
-            await bot.edit_message(processing_message, "🧠 در حال تحلیل شخصیت با هوش مصنوعی...")
-            
-            logger.info("شروع دریافت تحلیل از API")
-            analysis = get_personality_analysis(data_json)
-            logger.info("تحلیل با موفقیت دریافت شد")
-            
-            # ذخیره تحلیل در تاریخچه کاربر و پایگاه داده
-            await save_analysis_to_history(user_id, username, analysis)
-            
-            # ذخیره تحلیل برای استفاده در چت
-            if 'current_analysis' not in user_profile_info[user_id]:
-                user_profile_info[user_id]['current_analysis'] = {}
-            user_profile_info[user_id]['current_analysis'] = {
-                'username': username,
-                'text': analysis,
-                'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            }
-            
-            # حذف پیام پردازش
-            await bot.delete_messages(event.chat_id, processing_message)
-            
-            # ارسال نتیجه تحلیل به صورت چند پیام
-            max_length = 4000
-            sections = analysis.split('\n\n')
-            current_message = ""
-            
-            for section in sections:
-                if len(current_message) + len(section) + 2 <= max_length:
-                    current_message += section + "\n\n"
-                else:
-                    await event.respond(current_message)
-                    current_message = section + "\n\n"
-            
-            if current_message:
-                await event.respond(current_message)
-            
-            # نمایش گزینه‌های پایان تحلیل
-            current_coins = await get_user_coins(user_id)
-            buttons = [
-                [Button.inline("💬 چت با هوش مصنوعی درباره این تحلیل", b"chat_with_ai")],
-                [Button.inline("تحلیل جدید 🔄", b"start_analysis")],
-                [Button.inline("بازگشت به منوی اصلی 🏠", b"back_to_main")]
-            ]
-            
-            await event.respond(
-                f"✅ تحلیل شخصیت با موفقیت انجام شد.\n"
-                f"💰 سکه‌های باقیمانده: {current_coins}\n\n"
-                "چه کاری می‌خواهید انجام دهید؟",
-                buttons=buttons
-            )
-            
-        except Exception as e:
-            # در صورت خطا، سکه را برگردانیم
-            await add_coins(user_id, ANALYSIS_COST)
-            raise e
-            
-    except Exception as e:
-        error_message = f"❌ خطا در تحلیل شخصیت: {str(e)}"
-        logger.error(error_message)
-        traceback.print_exc()
-        
-        # حذف پیام پردازش اگر وجود داشته باشد
-        try:
-            if 'processing_message' in locals():
-                await bot.delete_messages(event.chat_id, processing_message)
-        except:
-            pass
-        
-        # برگرداندن سکه در صورت خطا
-        await add_coins(user_id, ANALYSIS_COST)
-        
-        # نمایش پیام خطای مناسب به کاربر
-        error_text = (
-            "❌ متأسفانه در تحلیل شخصیت خطایی رخ داد.\n\n"
-            "🔍 دلایل احتمالی:\n"
-            "1. نام کاربری اشتباه وارد شده\n"
-            "2. حساب کاربری خصوصی است\n"
-            "3. حساب کاربری وجود ندارد\n"
-            "4. مشکل در دسترسی به اینستاگرام\n\n"
-            "💰 سکه‌های شما برگردانده شد.\n"
-            "لطفاً دوباره تلاش کنید یا با پشتیبانی تماس بگیرید: @InstaAnalysAiSupport"
-        )
-        
-        await event.respond(error_text)
-        
-        # بازگشت به منوی اصلی
-        buttons = [
-            [Button.inline("تلاش مجدد 🔄", b"start_analysis")],
-            [Button.inline("بازگشت به منوی اصلی 🏠", b"back_to_main")]
-        ]
+        # تغییر وضعیت به مرحله بعدی
+        user_manager.set_user_state(user_id, States.TYPING_RELATIONSHIP)
         
         await event.respond(
-            "می‌خواهید چه کاری انجام دهید؟",
-            buttons=buttons
+            f"✅ اطلاعات رویداد ثبت شد.\n\n"
+            "لطفاً نوع رابطه یا هدف خود از تحلیل این پروفایل را وارد کنید (مثلاً: دوستی، کاری، عاطفی و...):",
+            buttons=back_to_main_button
         )
-
-# -----------------------
-# بازیابی تحلیل خاص از پایگاه داده
-async def get_analysis_by_id(analysis_id):
-    """بازیابی یک تحلیل خاص با شناسه آن از پایگاه داده"""
-    try:
-        analysis_doc = analysis_collection.find_one({"_id": ObjectId(analysis_id)})
-        if analysis_doc:
-            return analysis_doc
-        return None
-    except Exception as e:
-        logger.error(f"خطا در بازیابی تحلیل با شناسه {analysis_id}: {str(e)}")
-        return None
-
-# -----------------------
-# چت با هوش مصنوعی
-async def chat_with_ai(user_id, message, analysis=None):
-    """ارسال پیام به مدل هوش مصنوعی و دریافت پاسخ"""
-    try:
-        # بررسی موجودی سکه
-        success, current_coins = await deduct_coins(user_id, CHAT_COST)
-        if not success:
-            return f"⚠️ سکه‌های شما کافی نیست. موجودی فعلی: {current_coins} سکه\n" \
-                   f"هر پیام چت {CHAT_COST} سکه هزینه دارد.\n" \
-                   "لطفاً از بخش پروفایل کاربری، حساب خود را شارژ کنید."
+    
+    elif state == States.TYPING_RELATIONSHIP:
+        # دریافت نوع رابطه
+        relationship = text.strip()
         
-        # اگر تاریخچه چت برای این کاربر وجود ندارد، یک تاریخچه جدید ایجاد کنید
-        if user_id not in user_chat_history:
-            user_chat_history[user_id] = []
-            
-            # اگر تحلیل قبلی وجود دارد، آن را به عنوان اولین پیام سیستم اضافه کنید
-            if analysis:
-                user_chat_history[user_id].append({
-                    "role": "system",
-                    "content": f"شما یک مشاور شخصیت‌شناس هستید. شما قبلاً این تحلیل را درباره فرد مورد نظر ارائه کرده‌اید:\n\n{analysis}\n\nاکنون به سوالات کاربر در مورد این تحلیل پاسخ دهید. صمیمی و مفید باشید."
-                })
-            else:
-                user_chat_history[user_id].append({
-                    "role": "system",
-                    "content": "شما یک مشاور شخصیت‌شناس هستید. به سوالات کاربر با صمیمیت و به صورت مفصل پاسخ دهید."
-                })
-                
-        # افزودن پیام کاربر به تاریخچه
-        user_chat_history[user_id].append({
-            "role": "user",
-            "content": message
-        })
+        if not relationship:
+            await event.respond(
+                "❌ اطلاعات وارد شده معتبر نیست. لطفاً مجدداً تلاش کنید:",
+                buttons=back_to_main_button
+            )
+            return
         
-        # محدود کردن تعداد پیام‌ها به ۲۰ پیام آخر برای جلوگیری از افزایش هزینه
-        if len(user_chat_history[user_id]) > 21:  # ۱ پیام سیستم + ۲۰ پیام گفتگو
-            user_chat_history[user_id] = [user_chat_history[user_id][0]] + user_chat_history[user_id][-20:]
-            
-        # ارسال درخواست به API
-        logger.info("در حال ارسال درخواست چت به OpenAI API...")
-        response = client.chat.completions.create(
-            model="deepseek/deepseek-r1:free",
-            messages=user_chat_history[user_id],
-            extra_body={},
-            timeout=60
+        # ذخیره نوع رابطه در اطلاعات پروفایل
+        user_manager.set_profile_info(user_id, "relationship", relationship)
+        
+        # دریافت تمام اطلاعات پروفایل
+        profile_info = user_manager.get_profile_info(user_id)
+        
+        # نمایش خلاصه اطلاعات
+        summary = (
+            "📝 خلاصه اطلاعات وارد شده:\n\n"
+            f"👤 نام کاربری: {profile_info.get('username', '')}\n"
+            f"📋 نام: {profile_info.get('name', '')}\n"
+            f"🎂 سال تولد: {profile_info.get('birth_year', '')}\n"
+            f"👫 جنسیت: {profile_info.get('gender', '')}\n"
+            f"🏙 شهر: {profile_info.get('city', '')}\n"
+            f"💼 شغل: {profile_info.get('job', '')}\n"
+            f"🔍 هدف تحلیل: {relationship}\n\n"
+            "آیا اطلاعات فوق را تایید می‌کنید؟"
         )
         
-        if not response or not response.choices or len(response.choices) == 0:
-            # در صورت خطا، سکه را برگردانیم
-            await add_coins(user_id, CHAT_COST)
-            raise Exception("پاسخی از API دریافت نشد")
-            
-        reply = response.choices[0].message.content
+        # دکمه‌های تایید یا ویرایش
+        confirmation_buttons = [
+            [Button.inline("✅ تأیید و شروع تحلیل", b"confirm_analysis")],
+            [Button.inline("✏️ ویرایش اطلاعات", b"edit_profile_info")],
+            back_to_main_button
+        ]
         
-        # افزودن پاسخ به تاریخچه
-        user_chat_history[user_id].append({
-            "role": "assistant",
-            "content": reply
-        })
+        await event.respond(summary, buttons=confirmation_buttons)
+    
+    elif state == States.SEARCHING:
+        # پردازش جستجو
+        search_term = text.strip()
         
-        return reply
+        if not search_term:
+            await event.respond(
+                "❌ عبارت جستجو نمی‌تواند خالی باشد. لطفاً مجدداً تلاش کنید:",
+                buttons=back_to_main_button
+            )
+            return
         
-    except Exception as e:
-        logger.error(f"خطا در چت با هوش مصنوعی: {str(e)}")
-        traceback.print_exc()
-        # در صورت خطا، سکه را برگردانیم
-        await add_coins(user_id, CHAT_COST)
-        return f"متأسفانه خطایی رخ داده است: {str(e)}"
+        # در اینجا پردازش جستجو انجام می‌شود
+        await event.respond(
+            f"🔍 نتایج جستجو برای '{search_term}':\n\n"
+            "نتیجه‌ای یافت نشد. لطفاً با عبارت دیگری جستجو کنید.",
+            buttons=back_to_main_button
+        )
+    
+    else:
+        # اگر در هیچ حالت خاصی نیستیم، پیام را نادیده می‌گیریم
+        pass
 
 # -----------------------
 # اجرای اصلی ربات
 if __name__ == "__main__":
-    logger.info("ربات شروع به کار کرد.")
-    bot.run_until_disconnected()
+    try:
+        # Register all event handlers
+        logger.info("در حال ثبت هندلرهای رویدادها...")
+        
+        # Explicitly register UI filter for keyboard messages
+        ui_message_handler = events.NewMessage(func=ui_filter)
+        bot.add_event_handler(ui_message_processor, ui_message_handler)
+        
+        # Import and register specialized handlers if needed
+        if os.path.exists("src/handlers/message_handler.py") and os.path.exists("src/handlers/button_handler.py"):
+            try:
+                from handlers.message_handler import MessageHandler
+                from handlers.button_handler import ButtonHandler
+                
+                # Create and register handlers
+                message_handler = MessageHandler(bot, user_manager)
+                button_handler = ButtonHandler(bot, user_manager)
+                
+                # Register handlers
+                message_handler.register_handlers()
+                button_handler.register_handlers()
+                
+                logger.info("هندلرهای تخصصی با موفقیت ثبت شدند")
+            except Exception as handler_error:
+                logger.error(f"خطا در ثبت هندلرهای تخصصی: {str(handler_error)}")
+                traceback.print_exc()
+        
+        logger.info("ربات شروع به کار کرد.")
+        bot.run_until_disconnected()
+    except Exception as e:
+        logger.error(f"خطا در اجرای ربات: {str(e)}")
+        traceback.print_exc()
 
     # 2025-05-21 20:15:59,437 - __main__ - INFO - ربات شروع به کار کرد.
