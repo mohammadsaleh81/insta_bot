@@ -1,0 +1,8 @@
+nohup: ignoring input
+2025-05-22 19:33:11,335 - __main__ - INFO - اتصال به MongoDB با آدرس: mongodb://localhost:27017/
+2025-05-22 19:33:11,398 - __main__ - INFO - اتصال به MongoDB با موفقیت برقار شد
+2025-05-22 19:33:11,403 - telethon.network.mtprotosender - INFO - Connecting to 149.154.167.91:443/TcpFull...
+2025-05-22 19:33:11,414 - telethon.network.mtprotosender - INFO - Connection to 149.154.167.91:443/TcpFull complete!
+2025-05-22 19:33:11,600 - __main__ - INFO - در حال ثبت هندلرهای رویدادها...
+2025-05-22 19:33:11,601 - __main__ - INFO - هندلرهای تخصصی با موفقیت ثبت شدند
+2025-05-22 19:33:11,601 - __main__ - INFO - ربات شروع به کار کرد.

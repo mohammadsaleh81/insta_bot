@@ -4,11 +4,11 @@ from insta import get_insta_data, get_insta_posts
 logger = logging.getLogger(__name__)
 
 class InstagramService:
-    def build_gpt_input(self, username, extra_info):
+    async def build_gpt_input(self, username, extra_info):
         """Build input data for GPT analysis"""
         try:
-            profile_data = get_insta_data(username)
-            posts_data = get_insta_posts(username)
+            profile_data = await get_insta_data(username)
+            posts_data = await get_insta_posts(username)
 
             if not profile_data:
                 raise Exception("Error getting profile data from Instagram")

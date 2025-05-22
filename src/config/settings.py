@@ -1,5 +1,7 @@
 import os
 from dotenv import load_dotenv
+import logging
+from datetime import datetime
 
 # Load environment variables
 load_dotenv()
@@ -26,6 +28,29 @@ OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 # File Storage Settings
 HISTORY_DIR = "user_history"
 os.makedirs(HISTORY_DIR, exist_ok=True)
+
+# Logging Settings
+LOG_DIR = "logs"
+os.makedirs(LOG_DIR, exist_ok=True)
+
+# Create log filename with current date
+LOG_FILENAME = os.path.join(LOG_DIR, f"insta_bot_{datetime.now().strftime('%Y-%m-%d')}.log")
+
+# Logging format
+LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+LOG_LEVEL = 'INFO'
+
+# Configure logging
+logging.basicConfig(
+    level=getattr(logging, LOG_LEVEL),
+    format=LOG_FORMAT,
+    handlers=[
+        # File handler for saving logs to file
+        logging.FileHandler(LOG_FILENAME, encoding='utf-8'),
+        # Stream handler for console output
+        logging.StreamHandler()
+    ]
+)
 
 # Logging Settings
 LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'

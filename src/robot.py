@@ -107,16 +107,11 @@ class States:
 
 # -----------------------
 # ترکیب داده‌های اینستا با داده‌های تکمیلی
-def build_gpt_input(username, extra_info):
+async def build_gpt_input(username, extra_info):
     try:
-        profile_data = get_insta_data(username)
-        posts_data = get_insta_posts(username)
-
-        if not profile_data:
-            raise Exception("خطا در دریافت اطلاعات پروفایل از اینستاگرام")
-            
-        if not posts_data:
-            logger.warning(f"هشدار: اطلاعات پست‌های {username} دریافت نشد. ادامه با اطلاعات محدود.")
+        # دریافت اطلاعات پروفایل و پست‌ها
+        profile_data = await get_insta_data(username)
+        posts_data = await get_insta_posts(username)
 
         # پردازش ساده اطلاعات پست‌ها (تا ۵ پست غیر ویدیویی)
         recent_posts = []
@@ -196,7 +191,7 @@ def build_gpt_input(username, extra_info):
 
 # -----------------------
 # ارسال داده به GPT و دریافت تحلیل
-def get_personality_analysis(data_json):
+async def get_personality_analysis(data_json):
     try:
         prompt = f"""
 تو یک تحلیل‌گر شخصیت‌شناسی، سبک ارتباطی و گرایشات روانی-عاطفی هستی.
@@ -219,19 +214,37 @@ def get_personality_analysis(data_json):
 """
 
         logger.info("در حال ارسال درخواست به OpenAI API...")
-        response = client.chat.completions.create(
-            model="deepseek/deepseek-r1:free",
-            messages=[
-                {"role": "user", "content": prompt}
-            ],
-            extra_body={},
-            timeout=120  # زمان انتظار طولانی‌تر برای دریافت پاسخ
-        )
+        try:
+            response = client.chat.completions.create(
+                model="deepseek/deepseek-r1:free",
+                messages=[
+                    {"role": "system", "content": "تو یک تحلیل‌گر شخصیت‌شناسی حرفه‌ای هستی که تحلیل‌های دقیق و کاربردی ارائه می‌دهد."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.7,
+                max_tokens=2000,
+                timeout=120
+            )
 
-        if not response or not response.choices or len(response.choices) == 0:
-            raise Exception("پاسخی از API دریافت نشد")
+            if not response:
+                raise Exception("پاسخی از API دریافت نشد")
 
-        return response.choices[0].message.content
+            # بررسی ساختار پاسخ
+            if hasattr(response, 'choices') and len(response.choices) > 0:
+                if hasattr(response.choices[0], 'message'):
+                    return response.choices[0].message.content
+                elif hasattr(response.choices[0], 'text'):
+                    return response.choices[0].text
+                else:
+                    logger.error(f"ساختار پاسخ نامعتبر است: {response}")
+                    raise Exception("ساختار پاسخ API نامعتبر است")
+            else:
+                logger.error(f"پاسخ API فاقد محتوا است: {response}")
+                raise Exception("پاسخ API فاقد محتوا است")
+
+        except Exception as api_error:
+            logger.error(f"خطا در ارتباط با OpenAI API: {str(api_error)}")
+            raise Exception(f"خطا در ارتباط با API: {str(api_error)}")
         
     except Exception as e:
         logger.error(f"خطا در get_personality_analysis: {str(e)}")
@@ -645,7 +658,7 @@ async def button_callback(event):
             gpt_input = await build_gpt_input(username, profile_info)
             
             # دریافت تحلیل
-            analysis = get_personality_analysis(gpt_input)
+            analysis = await get_personality_analysis(gpt_input)
             
             # ذخیره تحلیل در تاریخچه
             await user_manager.save_analysis(user_id, username, analysis)
