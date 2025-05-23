@@ -1,5 +1,5 @@
 import logging
-from telethon import TelegramClient
+from telethon import TelegramClient, events
 from config.settings import (
     API_ID,
     API_HASH,
@@ -10,6 +10,7 @@ from config.settings import (
 from handlers.button_handler import ButtonHandler
 from handlers.message_handler import MessageHandler
 from handlers.analysis_handler import AnalysisHandler
+from handlers.admin_handler import admin_command, admin_callback, block_user_command, unblock_user_command
 
 # Configure logging
 logging.basicConfig(
@@ -55,6 +56,26 @@ class Bot:
         # Register handlers
         self.button_handler.register_handlers()
         self.message_handler.register_handlers()
+        self.register_admin_handlers()
+
+    def register_admin_handlers(self):
+        """Register admin-specific command handlers"""
+        self.client.add_event_handler(
+            admin_command,
+            events.NewMessage(pattern='/admin')
+        )
+        self.client.add_event_handler(
+            block_user_command,
+            events.NewMessage(pattern='/block')
+        )
+        self.client.add_event_handler(
+            unblock_user_command,
+            events.NewMessage(pattern='/unblock')
+        )
+        self.client.add_event_handler(
+            admin_callback,
+            events.CallbackQuery(pattern='^admin_')
+        )
 
     def run(self):
         """Start the bot"""

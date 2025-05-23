@@ -1,6 +1,11 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Set
+from enum import Enum
+
+class UserRole(Enum):
+    USER = "user"
+    ADMIN = "admin"
 
 @dataclass
 class UserProfile:
@@ -32,7 +37,7 @@ class States:
 class User:
     """User model class for storing user information"""
     
-    def __init__(self, user_id, first_name, last_name=None, username=None, lang_code=None):
+    def __init__(self, user_id, first_name, last_name=None, username=None, lang_code=None, role: UserRole = UserRole.USER):
         self.user_id = user_id
         self.first_name = first_name
         self.last_name = last_name
@@ -40,6 +45,10 @@ class User:
         self.lang_code = lang_code
         self.coins = 0
         self.profile_info = {}
+        self.role = role
+        self.state = States.MAIN_MENU
+        self.chat_history = []
+        self.current_analysis = None
         
     def get_full_name(self):
         """Get user's full name"""
@@ -62,6 +71,10 @@ class User:
             return True
         return False
         
+    def is_admin(self) -> bool:
+        """Check if user has admin role"""
+        return self.role == UserRole.ADMIN
+
     def to_dict(self):
         """Convert user to dictionary for database storage"""
         return {
@@ -70,7 +83,8 @@ class User:
             "last_name": self.last_name,
             "username": self.username,
             "lang_code": self.lang_code,
-            "coins": self.coins
+            "coins": self.coins,
+            "role": self.role.value
         }
 
     def set_state(self, state: int) -> None:
@@ -108,3 +122,44 @@ class User:
     def get_current_analysis(self) -> Optional[Dict]:
         """Get user's current analysis"""
         return self.current_analysis 
+
+class Admin(User):
+    """Admin model class with extended privileges"""
+    
+    def __init__(self, user_id, first_name, last_name=None, username=None, lang_code=None):
+        super().__init__(user_id, first_name, last_name, username, lang_code, role=UserRole.ADMIN)
+        
+    def get_all_users(self, db_connection) -> List[User]:
+        """Get list of all users"""
+        # This method will be implemented when connecting to the database
+        pass
+        
+    def get_user_analytics(self, user_id: int, db_connection) -> Dict:
+        """Get analytics for a specific user"""
+        # This method will be implemented when connecting to the database
+        pass
+        
+    def get_system_analytics(self, db_connection) -> Dict:
+        """Get system-wide analytics"""
+        # This method will be implemented when connecting to the database
+        pass
+        
+    def block_user(self, user_id: int, db_connection) -> bool:
+        """Block a user from using the bot"""
+        # This method will be implemented when connecting to the database
+        pass
+        
+    def unblock_user(self, user_id: int, db_connection) -> bool:
+        """Unblock a user"""
+        # This method will be implemented when connecting to the database
+        pass
+        
+    def modify_user_coins(self, user_id: int, amount: int, db_connection) -> bool:
+        """Modify a user's coin balance"""
+        # This method will be implemented when connecting to the database
+        pass
+        
+    def get_user_chat_history(self, user_id: int, db_connection, limit: int = 100) -> List[Dict]:
+        """Get chat history for a specific user"""
+        # This method will be implemented when connecting to the database
+        pass 

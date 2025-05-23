@@ -12,10 +12,16 @@ API_HASH = os.getenv('API_HASH')
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 BOT_USERNAME = os.getenv('BOT_USERNAME')
 
+# Admin Settings
+ADMIN_IDS = [int(id) for id in os.getenv('ADMIN_IDS', '').split(',') if id]  # List of admin user IDs
+ADMIN_USERNAME = os.getenv('ADMIN_USERNAME')  # Admin's username for support contact
+
 # Coin Settings
 ANALYSIS_COST = 10  # Cost per analysis
 CHAT_COST = 2      # Cost per chat message
 DEFAULT_COINS = 100  # Default free coins for new users
+MAX_COINS_PER_USER = 1000  # Maximum coins a user can have
+MIN_COINS_PER_USER = 0     # Minimum coins a user can have
 
 # MongoDB Settings
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
