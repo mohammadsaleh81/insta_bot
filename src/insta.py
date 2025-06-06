@@ -138,3 +138,7 @@ async def get_insta_posts(username, count=5):
     except Exception as e:
         logger.error(f"خطای نامشخص در get_insta_posts: {str(e)}")
         return None
+
+
+
+# خطای HTTP در دریافت اطلاعات پروفایل برای mobonews: 429

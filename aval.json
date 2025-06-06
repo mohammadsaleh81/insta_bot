@@ -1,0 +1,44 @@
+{
+    "id": "chatcmpl-BbAZ1laJBYMBqiTNPaEMymHqiZkxV",
+    "choices": [
+        {
+            "finish_reason": "stop",
+            "index": 0,
+            "logprobs": null,
+            "message": {
+                "content": "سیاست‌های بازگشت ممکن است بسته به نوع محصول یا خدمات و شرکت متفاوت باشد. به طور کلی، بسیاری از شرکت‌ها سیاست‌های زیر را دارند:\n\n1. **مدت زمان بازگشت**: معمولاً محصولات می‌توانند در مدت مشخصی (مثلاً 30 روز) پس از خرید بازگشت داده شوند.\n\n2. **وضعیت محصول**: محصول باید در شرایط اصلی خود، بدون استفاده و با تمام برچسب‌ها و بسته‌بندی اصلی بازگشت داده شود.\n\n3. **مراحل بازگشت**: برای بازگشت محصول، ممکن است نیاز به پر کردن فرم بازگشت یا تماس با خدمات مشتری داشته باشید تا مراحل را دنبال کنید.\n\n4. **هزینه‌های بازگشت**: برخی شرکت‌ها هزینه‌های ارسال بازگشت را پوشش می‌دهند و برخی دیگر ممکن است از مشتری درخواست کنند که این هزینه‌ها را خود پرداخت کند.\n\n5. **استثناها**: برخی از محصولات مانند لوازم آرایشی، لباس‌های زیر یا کالاهای دیجیتال ممکن است مشمول سیاست‌های بازگشت خاصی باشند.\n\nلطفاً برای اطلاعات دقیق‌تر و سیاست‌های خاص، به وب‌سایت رسمی شرکت یا فروشنده مربوطه مراجعه کنید.",
+                "refusal": null,
+                "role": "assistant",
+                "annotations": [],
+                "audio": null,
+                "function_call": null,
+                "tool_calls": null
+            }
+        }
+    ],
+    "created": 1748198443,
+    "model": "gpt-4o-mini-2024-07-18",
+    "object": "chat.completion",
+    "service_tier": null,
+    "system_fingerprint": "fp_7a53abb7a2",
+    "usage": {
+        "completion_tokens": 258,
+        "prompt_tokens": 34,
+        "total_tokens": 292,
+        "completion_tokens_details": {
+            "accepted_prediction_tokens": 0,
+            "audio_tokens": 0,
+            "reasoning_tokens": 0,
+            "rejected_prediction_tokens": 0
+        },
+        "prompt_tokens_details": {
+            "audio_tokens": 0,
+            "cached_tokens": 0
+        }
+    },
+    "estimated_cost": {
+        "unit": "0.0001758900",
+        "irt": 14,
+        "exchange_rate": 83000
+    }
+}

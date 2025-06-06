@@ -1,0 +1,229 @@
+{
+    "data": {
+        "apiTrafficAnalyticsLogs": {
+            "totalCount": 8058,
+            "nodes": [
+                {
+                    "requestId": "ee6a4f6adb53d736e7c13d2c8e631e23b2b2e5b3e96368bd742ddc87b9aaf9a0",
+                    "consumer": {
+                        "name": "asar",
+                        "username": null,
+                        "slugifiedName": "asarmedia1403",
+                        "thumbnail": "https://lh3.googleusercontent.com/a/ACg8ocLUW8WyFV_H68-tcEJq3z9yv5ipaZ2W_yhQO3clZQFwoElEUw=s96-c",
+                        "email": "asarmedia1403@gmail.com"
+                    },
+                    "endpointRoute": "instagram/user/get_media",
+                    "endpointId": "apiendpoint_fc63faeb-1ba5-4e52-9f5d-9170e4acf34a",
+                    "apiId": "api_485f8c4f-bfaf-4224-a645-173afab5beac",
+                    "apiName": "StarAPI",
+                    "httpMethod": "POST",
+                    "apiLatency": 779,
+                    "callTime": "2025-05-25T19:30:57.000Z",
+                    "callTimeUTC": "2025-05-25T19:30:57.000Z",
+                    "originCountryName": "Australia",
+                    "httpStatus": 200,
+                    "apiVersionName": "1.0.0",
+                    "isPayloadExist": true
+                },
+                {
+                    "requestId": "58af0a1112a7000f01e1fa19f0d1eb1f09b0e0a0e43a40b717dd93215b9db774",
+                    "consumer": {
+                        "name": "asar",
+                        "username": null,
+                        "slugifiedName": "asarmedia1403",
+                        "thumbnail": "https://lh3.googleusercontent.com/a/ACg8ocLUW8WyFV_H68-tcEJq3z9yv5ipaZ2W_yhQO3clZQFwoElEUw=s96-c",
+                        "email": "asarmedia1403@gmail.com"
+                    },
+                    "endpointRoute": "instagram/user/get_media",
+                    "endpointId": "apiendpoint_fc63faeb-1ba5-4e52-9f5d-9170e4acf34a",
+                    "apiId": "api_485f8c4f-bfaf-4224-a645-173afab5beac",
+                    "apiName": "StarAPI",
+                    "httpMethod": "POST",
+                    "apiLatency": 873,
+                    "callTime": "2025-05-25T19:30:55.000Z",
+                    "callTimeUTC": "2025-05-25T19:30:55.000Z",
+                    "originCountryName": "Australia",
+                    "httpStatus": 200,
+                    "apiVersionName": "1.0.0",
+                    "isPayloadExist": true
+                },
+                {
+                    "requestId": "af19bb28cfefbfd6ced946768ed3fb3fe8fee77679f7894f5b8a8ce4937c6c9c",
+                    "consumer": {
+                        "name": "asar",
+                        "username": null,
+                        "slugifiedName": "asarmedia1403",
+                        "thumbnail": "https://lh3.googleusercontent.com/a/ACg8ocLUW8WyFV_H68-tcEJq3z9yv5ipaZ2W_yhQO3clZQFwoElEUw=s96-c",
+                        "email": "asarmedia1403@gmail.com"
+                    },
+                    "endpointRoute": "instagram/user/get_media",
+                    "endpointId": "apiendpoint_fc63faeb-1ba5-4e52-9f5d-9170e4acf34a",
+                    "apiId": "api_485f8c4f-bfaf-4224-a645-173afab5beac",
+                    "apiName": "StarAPI",
+                    "httpMethod": "POST",
+                    "apiLatency": 803,
+                    "callTime": "2025-05-25T19:30:53.000Z",
+                    "callTimeUTC": "2025-05-25T19:30:53.000Z",
+                    "originCountryName": "Australia",
+                    "httpStatus": 200,
+                    "apiVersionName": "1.0.0",
+                    "isPayloadExist": true
+                },
+                {
+                    "requestId": "0a04880a6a8884fcf7adb8926ff904142a3a5a2da3946ad7a3c5b69bde2c1117",
+                    "consumer": {
+                        "name": "asar",
+                        "username": null,
+                        "slugifiedName": "asarmedia1403",
+                        "thumbnail": "https://lh3.googleusercontent.com/a/ACg8ocLUW8WyFV_H68-tcEJq3z9yv5ipaZ2W_yhQO3clZQFwoElEUw=s96-c",
+                        "email": "asarmedia1403@gmail.com"
+                    },
+                    "endpointRoute": "instagram/user/get_web_profile_info",
+                    "endpointId": "apiendpoint_91e7d192-60b5-4ca8-8d72-c26051d0fd9e",
+                    "apiId": "api_485f8c4f-bfaf-4224-a645-173afab5beac",
+                    "apiName": "StarAPI",
+                    "httpMethod": "POST",
+                    "apiLatency": 1172,
+                    "callTime": "2025-05-25T19:30:51.000Z",
+                    "callTimeUTC": "2025-05-25T19:30:51.000Z",
+                    "originCountryName": "Australia",
+                    "httpStatus": 200,
+                    "apiVersionName": "1.0.0",
+                    "isPayloadExist": true
+                },
+                {
+                    "requestId": "9eee757430bd7ba446ffacb232a4ef359a8790124831dfc631ae180d34ebc444",
+                    "consumer": {
+                        "name": "asar",
+                        "username": null,
+                        "slugifiedName": "asarmedia1403",
+                        "thumbnail": "https://lh3.googleusercontent.com/a/ACg8ocLUW8WyFV_H68-tcEJq3z9yv5ipaZ2W_yhQO3clZQFwoElEUw=s96-c",
+                        "email": "asarmedia1403@gmail.com"
+                    },
+                    "endpointRoute": "instagram/user/get_web_profile_info",
+                    "endpointId": "apiendpoint_91e7d192-60b5-4ca8-8d72-c26051d0fd9e",
+                    "apiId": "api_485f8c4f-bfaf-4224-a645-173afab5beac",
+                    "apiName": "StarAPI",
+                    "httpMethod": "POST",
+                    "apiLatency": 1062,
+                    "callTime": "2025-05-25T19:30:48.000Z",
+                    "callTimeUTC": "2025-05-25T19:30:48.000Z",
+                    "originCountryName": "Australia",
+                    "httpStatus": 200,
+                    "apiVersionName": "1.0.0",
+                    "isPayloadExist": true
+                },
+                {
+                    "requestId": "351cfa8e060c2b93b5e3db9066292b7fa48643ee6238ccd5e9d0586c360e6b3d",
+                    "consumer": {
+                        "name": "asar",
+                        "username": null,
+                        "slugifiedName": "asarmedia1403",
+                        "thumbnail": "https://lh3.googleusercontent.com/a/ACg8ocLUW8WyFV_H68-tcEJq3z9yv5ipaZ2W_yhQO3clZQFwoElEUw=s96-c",
+                        "email": "asarmedia1403@gmail.com"
+                    },
+                    "endpointRoute": "instagram/user/get_web_profile_info",
+                    "endpointId": "apiendpoint_91e7d192-60b5-4ca8-8d72-c26051d0fd9e",
+                    "apiId": "api_485f8c4f-bfaf-4224-a645-173afab5beac",
+                    "apiName": "StarAPI",
+                    "httpMethod": "POST",
+                    "apiLatency": 1655,
+                    "callTime": "2025-05-25T19:30:45.000Z",
+                    "callTimeUTC": "2025-05-25T19:30:45.000Z",
+                    "originCountryName": "Australia",
+                    "httpStatus": 200,
+                    "apiVersionName": "1.0.0",
+                    "isPayloadExist": true
+                },
+                {
+                    "requestId": "e8794481128983fa114c65dfbc6641ed18bbef512a82b481c96d3b50eb0e16fe",
+                    "consumer": {
+                        "name": "asar",
+                        "username": null,
+                        "slugifiedName": "asarmedia1403",
+                        "thumbnail": "https://lh3.googleusercontent.com/a/ACg8ocLUW8WyFV_H68-tcEJq3z9yv5ipaZ2W_yhQO3clZQFwoElEUw=s96-c",
+                        "email": "asarmedia1403@gmail.com"
+                    },
+                    "endpointRoute": "instagram/user/get_web_profile_info",
+                    "endpointId": "apiendpoint_91e7d192-60b5-4ca8-8d72-c26051d0fd9e",
+                    "apiId": "api_485f8c4f-bfaf-4224-a645-173afab5beac",
+                    "apiName": "StarAPI",
+                    "httpMethod": "POST",
+                    "apiLatency": 1086,
+                    "callTime": "2025-05-25T19:30:42.000Z",
+                    "callTimeUTC": "2025-05-25T19:30:42.000Z",
+                    "originCountryName": "Australia",
+                    "httpStatus": 200,
+                    "apiVersionName": "1.0.0",
+                    "isPayloadExist": true
+                },
+                {
+                    "requestId": "eb708429ff74781c0484998ff27b340f0875677a053f244c5449cb7b9fcae94f",
+                    "consumer": {
+                        "name": "asar",
+                        "username": null,
+                        "slugifiedName": "asarmedia1403",
+                        "thumbnail": "https://lh3.googleusercontent.com/a/ACg8ocLUW8WyFV_H68-tcEJq3z9yv5ipaZ2W_yhQO3clZQFwoElEUw=s96-c",
+                        "email": "asarmedia1403@gmail.com"
+                    },
+                    "endpointRoute": "instagram/user/get_web_profile_info",
+                    "endpointId": "apiendpoint_91e7d192-60b5-4ca8-8d72-c26051d0fd9e",
+                    "apiId": "api_485f8c4f-bfaf-4224-a645-173afab5beac",
+                    "apiName": "StarAPI",
+                    "httpMethod": "POST",
+                    "apiLatency": 1427,
+                    "callTime": "2025-05-25T19:30:40.000Z",
+                    "callTimeUTC": "2025-05-25T19:30:40.000Z",
+                    "originCountryName": "Australia",
+                    "httpStatus": 200,
+                    "apiVersionName": "1.0.0",
+                    "isPayloadExist": true
+                },
+                {
+                    "requestId": "58a6829cef66c15d14db3bc433045c4d209f6716f4fddbd6a23be3eb96cccaeb",
+                    "consumer": {
+                        "name": "asar",
+                        "username": null,
+                        "slugifiedName": "asarmedia1403",
+                        "thumbnail": "https://lh3.googleusercontent.com/a/ACg8ocLUW8WyFV_H68-tcEJq3z9yv5ipaZ2W_yhQO3clZQFwoElEUw=s96-c",
+                        "email": "asarmedia1403@gmail.com"
+                    },
+                    "endpointRoute": "instagram/user/get_media",
+                    "endpointId": "apiendpoint_fc63faeb-1ba5-4e52-9f5d-9170e4acf34a",
+                    "apiId": "api_485f8c4f-bfaf-4224-a645-173afab5beac",
+                    "apiName": "StarAPI",
+                    "httpMethod": "POST",
+                    "apiLatency": 1085,
+                    "callTime": "2025-05-25T19:30:37.000Z",
+                    "callTimeUTC": "2025-05-25T19:30:37.000Z",
+                    "originCountryName": "Australia",
+                    "httpStatus": 200,
+                    "apiVersionName": "1.0.0",
+                    "isPayloadExist": true
+                },
+                {
+                    "requestId": "4fffb2e0e399bdaaac0388beffd269416e2fd497e713a5bd6a9a16a494b9f7ce",
+                    "consumer": {
+                        "name": "asar",
+                        "username": null,
+                        "slugifiedName": "asarmedia1403",
+                        "thumbnail": "https://lh3.googleusercontent.com/a/ACg8ocLUW8WyFV_H68-tcEJq3z9yv5ipaZ2W_yhQO3clZQFwoElEUw=s96-c",
+                        "email": "asarmedia1403@gmail.com"
+                    },
+                    "endpointRoute": "instagram/user/get_media",
+                    "endpointId": "apiendpoint_fc63faeb-1ba5-4e52-9f5d-9170e4acf34a",
+                    "apiId": "api_485f8c4f-bfaf-4224-a645-173afab5beac",
+                    "apiName": "StarAPI",
+                    "httpMethod": "POST",
+                    "apiLatency": 690,
+                    "callTime": "2025-05-25T19:30:35.000Z",
+                    "callTimeUTC": "2025-05-25T19:30:35.000Z",
+                    "originCountryName": "Australia",
+                    "httpStatus": 200,
+                    "apiVersionName": "1.0.0",
+                    "isPayloadExist": true
+                }
+            ]
+        }
+    }
+}
